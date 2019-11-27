@@ -1,13 +1,51 @@
 import torch
 import copy 
+import functools
+import random
 
 class TemporalStruct(object):
-    def __init__(self, marked_dim=0):
-        self.marked_dim = 0
-        self.mixin = False
-        self.sub_shape = (x.shape[marked_dim],)
-        self.sub_dims = (0,)
+    """Right now we do not support breaking down the temporal dimension into multiple ones. 
+    Probably support that in the future?"""
+    def __init__(self, marked_dim):
+        self.marked_dim = marked_dim
+        self.sub_dim_prev = 1
+        self.sub_dim_next = 1
         self.offset = 0
+
+    def copy(self):
+        return copy.deepcopy(self)
+
+    def convert(self, shape_old, shape_new):
+        def prod(array):
+            prod_ = 1
+            for ele in array:
+                prod_ *= ele
+            return prod_
+        assert prod(shape_old) == prod(shape_new), "Num of elements does not match"
+        dims_front = prod(shape_old[:self.marked_dim])
+        new_marked_dim = self.locate_dim(shape_new, dims_front * self.sub_dim_prev)
+        dim_t = shape_old[self.marked_dim] // self.sub_dim_prev // self.sub_dim_next
+        new_dim_with_t = shape_new[new_marked_dim]
+        new_dims_front = prod(shape_new[:new_marked_dim])
+
+        assert dims_front * self.sub_dim_prev % new_dims_front == 0
+        self.sub_dim_prev = dims_front * self.sub_dim_prev // new_dims_front
+        assert new_dim_with_t % dim_t == 0
+        assert new_dim_with_t // dim_t % self.sub_dim_prev == 0
+        self.sub_dim_next = new_dim_with_t // dim_t // self.sub_dim_prev
+
+    @property
+    def dirty(self):
+        return self.sub_dim_prev * self.sub_dim_next != 1
+
+    @staticmethod
+    def locate_dim(array, prod):
+        idx = 0
+        while prod > array[idx]:
+            prod = prod // array[idx]
+            idx += 1
+        return idx
+        
 
 class MarkedTensor(torch.Tensor):
     def __new__(cls, x, marked_dim, *args, **kwargs): 
@@ -18,9 +56,7 @@ class MarkedTensor(torch.Tensor):
     def __init__(self, x, marked_dim): 
         self.tstruct = TemporalStruct(marked_dim=marked_dim)
 
-        self.ancestors = []
-        self.meta = None
-
+    @property
     def marked_dim(self):
         return self.tstruct.marked_dim        
 
@@ -41,7 +77,7 @@ class MarkedTensor(torch.Tensor):
         new_obj.data = super().to(*args, **kwargs)
         return new_obj
 
-def get_marked_tensor(tensor, temporal_struct):
+def mark_tensor(tensor, temporal_struct):
     marked_tensor = MarkedTensor(tensor, 0)
-    marked_tensor.tstruct = copy.deepcopy(temporal_struct)
+    marked_tensor.tstruct = temporal_struct.copy()
     return marked_tensor

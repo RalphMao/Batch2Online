@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import onlinefy
 from onlinefy.marked_tensor import MarkedTensor
 
 class TemporalModel(torch.nn.Module):
@@ -21,12 +22,13 @@ class TemporalModel(torch.nn.Module):
     def conv3d(data_5d, conv3d_module):
         data = data_5d.permute(0, 2, 1, 3, 4)
         feat_t = conv3d_module(data)
-        feat_t = feat_t.transpose(1, 2)
+        feat_t = feat_t.permute(0, 2, 1, 3, 4)
+        feat_t = feat_t.contiguous()
         return feat_t
         
 
     def forward(self, video_in):
-        assert video_in.ndim == 5
+        assert video_in.dim() == 5
         feat1 = self.conv2d(video_in, self.conv1)
         feat1 = torch.relu(feat1)
         
@@ -34,12 +36,12 @@ class TemporalModel(torch.nn.Module):
 
         output_1 = self.conv2d(feat_t, self.conv2_1)
         output_2 = self.conv2d(feat_t, self.conv2_2)
-        output_2 = torch.sum(output_2, dim=4)
+        # output_2 = torch.sum(output_2, dim=4)
         
         return output_1, output_2
 
 def test_correctness():
-    video_batch = torch.ones(1,10,3,50,50, requires_grad=True)
+    video_batch = torch.ones(2,10,3,50,50, requires_grad=True)
     tmodel = TemporalModel()
     output_1, output_2 = tmodel(video_batch)
 
@@ -50,19 +52,25 @@ def test_onlinefy():
     tmodel = TemporalModel()
 
     # Reverse mode
+    '''
+    inject_torch()
     output_1, output_2 = tmodel(video_batch)
     online_model = onlinefy.OnlineModel()
     online_model.analyze_outputs(output_1, output_2)
     initial_state = online_model.get_initial_state()
     online_forward = online_model.forward
+    uninject_torch()
+    '''
 
     # Forward mode
-    with onlinefy.OnlineModel() as om:
-        output_1, output_2 = tmodel(video_batch)
-        initial_state = om.get_initial_state()
-        online_forward = online_model.get_forward_func()
+    with onlinefy.OnlineComprehension(debug=True) as om:
+        output_1, output_2 = tmodel(marked_batch)
+        online_forward, initial_states = om.get_online_func(
+            inputs=(video_batch,),
+            outputs=(output_1, output_2))
         
     
+
     outputs_1 = []
     outputs_2 = []
     for t in range(len(video_batch.shape[1])):
@@ -74,5 +82,5 @@ def test_onlinefy():
     outputs_new_1 = torch.cat(outputs_1, dim=1)
     outputs_new_2 = torch.cat(outputs_2, dim=1)
 
-
 test_correctness()
+test_onlinefy()
