@@ -6,14 +6,16 @@ import traceback
 from .marked_tensor import MarkedTensor, mark_tensor
 from .rule import funcrule_dict
 from .node import FuncNode
+from .arg_parser import parse_func_args, get_marked_tensors
 
 def get_funcrule(func):
     funcname = func.__qualname__
     return funcrule_dict[funcname](func)
 
-def print_parent_stack(stack_id):
+def print_parent_stack(name, stack_id):
     stack = traceback.extract_stack()[stack_id]
-    message = "{filename}:{lineno}\n    {line}\n".format(
+    message = "[{name}] in {filename}:{lineno}\n    {line}\n".format(
+            name=name,
             filename=stack.filename,
             lineno=stack.lineno,
             line=stack.line)
@@ -33,7 +35,7 @@ def marked_func_wrapper(func, session):
             output_info = funcrule.analyze_output(marked_tensors, func_args, results_unmarked)
 
             if isinstance(results_unmarked, torch.Tensor):
-                results = get_marked_tensor(results_unmarked, output_info)
+                results = mark_tensor(results_unmarked, output_info)
                 output_tensor = results
             elif type(results) is tuple:
                 results = (mark_tensor(results_unmarked[0], output_info), ) + results_unmarked[1:]
@@ -41,9 +43,9 @@ def marked_func_wrapper(func, session):
             else:
                 raise NotImplementedError
 
-            session['graph'].append(FuncNode(online_func, init_state, marked_tensors, output_tensor))
+            session['graph'].append(FuncNode(online_func, init_state, marked_tensors, output_tensor, func.__name__))
             if session['debug']:
-                print_parent_stack(-3)
+                print_parent_stack(func.__name__, -3)
         else:
             results = func(*args, **kwargs)
 

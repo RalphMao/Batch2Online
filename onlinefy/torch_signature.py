@@ -4,6 +4,7 @@ Declaration file could be found in: torch/share/ATen/Declarations.yaml
 Processing is referred to as in: torch/lib/python3.6/site-packages/caffe2/contrib/aten/gen_op.py
 """
 import yaml
+import os
 from collections import OrderedDict
 
 def get_scalar_func(target_type):
@@ -23,6 +24,9 @@ def array_func(argument_spec):
         default = (default, ) * argument_spec['size']
     return default, is_variable_length
 
+def default_func(argument_spec):
+    return None, False
+
 def unimplemented_func(argument_spec):
     raise NotImplementedError
 
@@ -31,6 +35,7 @@ def get_full_specs():
     return yaml.load(open(decl_file))
 
 Argument_Mapping = {
+    'Tensor': get_scalar_func(str),
     'Scalar': get_scalar_func(float),
     'bool': get_scalar_func(float),
     'int': get_scalar_func(int),
@@ -50,7 +55,7 @@ def get_func_signature(funcname):
     for argument in func_spec['arguments']:
         name = argument['name']
         data_type = argument['dynamic_type']
-        process_func = Argument_Mapping[data_type]
+        process_func = Argument_Mapping.get(data_type, default_func)
         default, is_variable_length = process_func(argument)
         is_required = True
         if argument['is_nullable']:

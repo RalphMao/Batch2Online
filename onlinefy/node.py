@@ -1,11 +1,12 @@
 
 class FuncNode(object):
-    def __init__(self, func, state, inputs, output):
+    def __init__(self, func, state, inputs, output, name="default"):
         self.func = func
         self.state = state
         self.inputs = [id(tensor) for tensor in inputs]
         self.output = id(output)
         self.state_id = id(state) if state else 0
+        self.name = name
 
     def execute(self, exec_vars, states, new_states):
 
@@ -15,3 +16,10 @@ class FuncNode(object):
         if self.state_id != 0:
             new_states[self.state_id] = new_state
         exec_vars[self.output] = output_tensor
+
+    def __repr__(self):
+        desc = "Node <{func}> of {num} inputs".format(
+                func=self.name, 
+                num=len(self.inputs),
+                )
+        return desc

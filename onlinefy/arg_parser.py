@@ -11,6 +11,8 @@ Input is represented with ordered dict
 
 from collections import OrderedDict
 
+from .marked_tensor import MarkedTensor
+
 def default_arg_from_sig(sig):
     func_args = OrderedDict()
     for key, (default, is_required, is_variable_length) in sig.items():
@@ -25,9 +27,10 @@ def parse_func_args(args, kwargs, sig):
     func_args = default_arg_from_sig(sig)
     args = list(args)
     sig_idx = 0
+    sig_keys = list(sig.keys())
     while len(args) > 0:
         arg = args.pop(0)
-        key = sig.keys()[sig_idx]
+        key = sig_keys[sig_idx]
         is_variable_length = sig[key][2]
         if is_variable_length:
             func_args[key].append(arg)

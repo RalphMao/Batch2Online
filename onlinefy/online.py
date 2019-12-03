@@ -16,22 +16,27 @@ class OnlineComprehension(object):
 
     def _init_session(self):
         self.session['graph'] = []
-        self.session['states'] = {}
-        self.session['temp_vars'] = {}
 
     def get_online_func(self, inputs, outputs):
         output_ids = [id(output) for output in outputs]
         input_ids = [id(input) for input in inputs]
         output2node_mapping = dict([(funcnode.output, funcnode) for funcnode in self.session['graph']])
         nodelist = []
+        running_output_ids = [id_ for id_ in output_ids]
         for node in self.session['graph'][::-1]:
-            if node.output in outputs:
+            if node.output in running_output_ids:
                 nodelist.insert(0, node)
-                outputs.remove(node.output)
-                unresolved_inputs = [input for input in node.inputs if input not in inputs]
-                outputs.extend(unresolved_inputs)
-        assert len(outputs) == 0, "Cannot resolve all outputs"
+                running_output_ids.remove(node.output)
+                unresolved_inputs = [input for input in node.inputs if input not in input_ids]
+                running_output_ids.extend(unresolved_inputs)
+                running_output_ids = list(set(running_output_ids))
+                
+            else:
+                print("Warning")
+        assert len(running_output_ids) == 0, "Cannot resolve all outputs"
         online_func = self.get_func_from_nodes(nodelist, input_ids, output_ids)
+        states = self.get_states_from_nodes(nodelist)
+        return online_func, states
 
     @staticmethod
     def get_func_from_nodes(nodelist, inputs, outputs):
@@ -45,3 +50,10 @@ class OnlineComprehension(object):
             return output_tensors, new_states
         return forward_func
     
+    @staticmethod
+    def get_states_from_nodes(nodelist):
+        states = {}
+        for node in nodelist:
+            if node.state_id != 0:
+                states[node.state_id] = node.state
+        return states

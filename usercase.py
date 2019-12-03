@@ -16,7 +16,8 @@ class TemporalModel(torch.nn.Module):
         old_shape = data_5d.shape
         data = data_5d.view((old_shape[0] * old_shape[1],) + old_shape[2:])
         feat = conv2d_module(data)
-        return feat.view((old_shape[0], old_shape[1],) + feat.shape[1:])
+        feat_old_shape = feat.view((old_shape[0], old_shape[1],) + feat.shape[1:])
+        return feat_old_shape
 
     @staticmethod
     def conv3d(data_5d, conv3d_module):
@@ -66,21 +67,20 @@ def test_onlinefy():
     with onlinefy.OnlineComprehension(debug=True) as om:
         output_1, output_2 = tmodel(marked_batch)
         online_forward, initial_states = om.get_online_func(
-            inputs=(video_batch,),
+            inputs=(marked_batch,),
             outputs=(output_1, output_2))
-        
     
 
     outputs_1 = []
     outputs_2 = []
-    for t in range(len(video_batch.shape[1])):
+    for t in range(video_batch.shape[1]):
         frame = video_batch[:, t:t + 1]
-        tmp1, tmp2 = online_forward(frame, initial_state)
+        tmp1, tmp2 = online_forward([frame], initial_states)
         outputs_1.append(tmp1)
         outputs_2.append(tmp2)
 
     outputs_new_1 = torch.cat(outputs_1, dim=1)
     outputs_new_2 = torch.cat(outputs_2, dim=1)
 
-test_correctness()
+# test_correctness()
 test_onlinefy()

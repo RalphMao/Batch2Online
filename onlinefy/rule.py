@@ -1,6 +1,8 @@
 import copy
 import torch
 from .marked_tensor import MarkedTensor
+from .arg_parser import get_marked_tensors, construct_input
+from .torch_signature import get_func_signature
 
 def make_identical_func(func, func_args):
     marked_tensors, marked_keys = get_marked_tensors(func_args)
@@ -23,7 +25,7 @@ class BaseRule(object):
         return make_identical_func(self.func, func_args)
 
     def analyze_output(self, marked_tensors, func_args, results):
-        return input_tensors[0].tstruct.copy()
+        return marked_tensors[0].tstruct.copy()
 
 class UnivariateRule(BaseRule):
     pass
@@ -90,7 +92,7 @@ class ReshapeRule(BaseRule):
         
 class DimPermuteRule(BaseRule):
     def _input_analyze(self, func_args):
-        if self.func.__name__ == "permute"
+        if self.func.__name__ == "permute":
             permute_order = func_args['dims']
         else:
             raise Exception("Unknown function:%s", self.func.__qualname__)
@@ -119,6 +121,7 @@ funcrule_dict = {
     # '_VariableFunctions.sum': ReductionRule,
     # '_VariableFunctions.add': ElementwiseRule,
     '_TensorBase.view': ReshapeRule,
-    '_TensorBase.transpose': DimPermuteRule,
+    '_TensorBase.contiguous': UnivariateRule,
+    '_TensorBase.permute': DimPermuteRule,
 }
 
