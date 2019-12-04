@@ -31,8 +31,7 @@ def marked_func_wrapper(func, session):
 
             results_unmarked = func(*args, **kwargs)
 
-            online_func, init_state = funcrule.onlinefy(marked_tensors, func_args, results_unmarked)
-            output_info = funcrule.analyze_output(marked_tensors, func_args, results_unmarked)
+            online_func, init_state, output_info = funcrule.onlinefy(marked_tensors, func_args, results_unmarked)
 
             if isinstance(results_unmarked, torch.Tensor):
                 results = mark_tensor(results_unmarked, output_info)
@@ -57,24 +56,27 @@ def inject_torch(session):
     torch.tensor_original = EasyDict()
     torch.nnfunc_original = EasyDict()
     for name, val in torch.__dict__.items():
-        if type(val) is types.BuiltinFunctionType and val.__qualname__ in funcrule_dict:
-            setattr(torch, name, marked_func_wrapper(val, session))
+        if type(val) is types.BuiltinFunctionType:
             torch.original[name] = val
-            if session['debug']:
-                print("Inject torch.{name}".format(name=val.__qualname__))
+            if val.__qualname__ in funcrule_dict:
+                setattr(torch, name, marked_func_wrapper(val, session))
+                if session['debug']:
+                    print("Inject torch.{name}".format(name=val.__qualname__))
     for name, val in torch.nn.functional.__dict__.items():
-        if type(val) is types.BuiltinFunctionType and val.__qualname__ in funcrule_dict:
-            setattr(torch.nn.functional, name, marked_func_wrapper(val, session))
+        if type(val) is types.BuiltinFunctionType:
             torch.nnfunc_original[name] = val
-            if session['debug']:
-                print("Inject torch.nn.functional.{name}".format(name=val.__qualname__))
+            if val.__qualname__ in funcrule_dict:
+                setattr(torch.nn.functional, name, marked_func_wrapper(val, session))
+                if session['debug']:
+                    print("Inject torch.nn.functional.{name}".format(name=val.__qualname__))
     for name in dir(torch.Tensor):
         val = getattr(torch.Tensor, name)
-        if type(val) is type(torch.Tensor.new) and val.__qualname__ in funcrule_dict:
-            setattr(torch.Tensor, name, marked_func_wrapper(val, session))
+        if type(val) is type(torch.Tensor.new):
             torch.tensor_original[name] = val
-            if session['debug']:
-                print("Inject torch.Tensor.{name}".format(name=val.__qualname__))
+            if val.__qualname__ in funcrule_dict:
+                setattr(torch.Tensor, name, marked_func_wrapper(val, session))
+                if session['debug']:
+                    print("Inject torch.Tensor.{name}".format(name=val.__qualname__))
 
 def uninject_torch():
     for name in torch.original:

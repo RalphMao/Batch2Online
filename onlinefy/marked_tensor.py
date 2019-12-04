@@ -72,6 +72,11 @@ class MarkedTensor(torch.Tensor):
         return self.tstruct.marked_dim        
 
     @property
+    def tdim_size(self):
+        assert self.shape[self.marked_dim] % (self.tstruct.sub_dim_prev * self.tstruct.sub_dim_next) == 0
+        return self.shape[self.marked_dim] // self.tstruct.sub_dim_prev // self.tstruct.sub_dim_next
+
+    @property
     def dirty(self):
         return self.tstruct.dirty
 

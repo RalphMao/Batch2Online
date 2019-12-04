@@ -14,7 +14,7 @@ def make_identical_func(func, func_args):
         args, kwargs = construct_input(func_args)
         
         return func(*args, **kwargs), None
-    return identical_func, None
+    return identical_func
 
 class BaseRule(object):
     def __init__(self, func):
@@ -22,10 +22,9 @@ class BaseRule(object):
         self.signature = get_func_signature(func.__name__)
 
     def onlinefy(self, marked_tensors, func_args, results):
-        return make_identical_func(self.func, func_args)
-
-    def analyze_output(self, marked_tensors, func_args, results):
-        return marked_tensors[0].tstruct.copy()
+        return (make_identical_func(self.func, func_args),
+               None, 
+               marked_tensors[0].tstruct.copy())
 
 class UnivariateRule(BaseRule):
     pass
@@ -40,28 +39,35 @@ class ConvRule(BaseRule):
         weight = func_args["weight"]
         assert len(marked_tensors) == 1 and marked_tensors[0] is marked_tensor
         if marked_tensor.marked_dim + self.convdim < marked_tensor.dim():
-            return make_identical_func(self.func, func_args)
+            return super().onlinefy(marked_tensors, func_args, results)
         else:
             tdim = marked_tensor.marked_dim - marked_tensor.dim() + self.convdim
             assert not marked_tensor.dirty 
             target_dim = marked_tensor.marked_dim
-            assert 'stride' not in func_args or func_args['stride'][tdim] == 1
-            assert 'dilation' not in func_args or func_args['dilation'][tdim] == 1
+            kernel_size = weight.shape[target_dim]
+            assert func_args['stride'][tdim] == 1
+            assert func_args['dilation'][tdim] == 1
+            assert func_args['padding'][tdim] == kernel_size - 1
+            padding = list(func_args['padding'])
             def online_conv(input_tensors, state):
                 input_tensor = input_tensors[0]
                 inputs = torch.original.cat(state + (input_tensor, ), dim=target_dim)
-                padding = list(func_args['padding'])
                 padding[tdim] = 0
                 func_args['padding'] = padding
                 func_args['input']  = inputs
                 output = self.func(**func_args)
                 new_state = state[1:] + (input_tensor, )
                 return output, new_state
+
             initial_state_shape = list(marked_tensor.shape)
             initial_state_shape[target_dim] = 1
-            initial_state = [torch.zeros(initial_state_shape)] * (weight.shape[target_dim] - 1)
-            return online_conv, initial_state
-    
+            initial_state = (torch.zeros(initial_state_shape), ) * padding[tdim]
+
+            t_struct_new = marked_tensor.tstruct.copy()
+            t_struct_new.offset += padding[tdim] + 1 - kernel_size 
+
+            return online_conv, initial_state, t_struct_new
+
 class ReshapeRule(BaseRule):
     def _input_analyze(self, func_args):
         if self.func.__name__ == "view":
@@ -72,24 +78,23 @@ class ReshapeRule(BaseRule):
 
     def onlinefy(self, marked_tensors, func_args, results):
         marked_tensor = marked_tensors[0]
-        shape = self._input_analyze(func_args)
+        shape = marked_tensor.shape
+        out_shape = results.shape
+        tstruct_new = marked_tensor.tstruct.copy()
+        tstruct_new.convert(shape, out_shape)
         
+        marked_dim = marked_tensor.marked_dim
+        tdim = marked_tensor.tdim_size
         def online_reshape(input_tensors, state):
             input_tensor = input_tensors[0]
-            new_shape = list(shape)
-            new_shape[marked_tensor.marked_dim] = input_tensor.shape[marked_tensor.marked_dim]
+            new_shape = list(out_shape)
+            assert new_shape[tstruct_new.marked_dim] % tdim == 0
+            new_shape[tstruct_new.marked_dim] = new_shape[tstruct_new.marked_dim] // tdim
             new_shape = tuple(new_shape)
-            return torch.tensor_original.view(input_tensor, new_shape, ), None
-        return online_reshape, None
+            output_tensor = torch.tensor_original.view(input_tensor, new_shape)
+            return output_tensor, None
+        return online_reshape, None, tstruct_new
 
-    def analyze_output(self, marked_tensors, func_args, results):
-        out_shape = results.shape
-        shape = marked_tensors[0].shape
-
-        tstruct = marked_tensors[0].tstruct.copy()
-        tstruct.convert(shape, out_shape)
-        return tstruct
-        
 class DimPermuteRule(BaseRule):
     def _input_analyze(self, func_args):
         if self.func.__name__ == "permute":
@@ -100,19 +105,14 @@ class DimPermuteRule(BaseRule):
 
     def onlinefy(self, marked_tensors, func_args, results):
         permute_order = self._input_analyze(func_args)
+        tstruct_new = marked_tensors[0].tstruct.copy()
+        tstruct_new.marked_dim = permute_order.index(tstruct_new.marked_dim)
 
         def online_permute(input_tensors, state):
             input_tensor = input_tensors[0]
             return torch.tensor_original.permute(input_tensor, permute_order), None
-        return online_permute, None
+        return online_permute, None, tstruct_new
 
-    def analyze_output(self, marked_tensors, func_args, results):
-        permute_order = self._input_analyze(func_args)
-
-        tstruct = marked_tensors[0].tstruct.copy()
-        tstruct.marked_dim = permute_order.index(tstruct.marked_dim)
-        return tstruct
-    
 
 funcrule_dict = {
     '_VariableFunctions.conv2d': ConvRule,

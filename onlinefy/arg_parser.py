@@ -22,6 +22,12 @@ def default_arg_from_sig(sig):
             func_args[key] = default
     return func_args
 
+def _isiterable(element):
+    if type(element) is tuple or type(element) is list:
+        return True
+    else:
+        return False
+
 def parse_func_args(args, kwargs, sig):
     # This function does not perform any sanity check!
     func_args = default_arg_from_sig(sig)
@@ -32,7 +38,7 @@ def parse_func_args(args, kwargs, sig):
         arg = args.pop(0)
         key = sig_keys[sig_idx]
         is_variable_length = sig[key][2]
-        if is_variable_length:
+        if is_variable_length and not _isiterable(arg):
             func_args[key].append(arg)
         else:
             func_args[key] = arg

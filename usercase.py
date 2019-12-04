@@ -7,7 +7,7 @@ class TemporalModel(torch.nn.Module):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.conv1 = nn.Conv2d(3, 16, kernel_size=(3, 3), padding=(1, 1), bias=False)
-        self.tconv = nn.Conv3d(16, 16, kernel_size=(3, 3, 3), padding=(1, 1, 1), bias=False)
+        self.tconv = nn.Conv3d(16, 16, kernel_size=(3, 3, 3), padding=(2, 1, 1), bias=False)
         self.conv2_1 = nn.Conv2d(16, 8, kernel_size=(3, 3), padding=(1, 1), bias=False)
         self.conv2_2 = nn.Conv2d(16, 4, kernel_size=(1, 1), padding=(0, 0), bias=False)
 
@@ -65,22 +65,23 @@ def test_onlinefy():
 
     # Forward mode
     with onlinefy.OnlineComprehension(debug=True) as om:
-        output_1, output_2 = tmodel(marked_batch)
-        online_forward, initial_states = om.get_online_func(
+        outputs = tmodel(marked_batch)
+        online_forward, states = om.get_online_func(
             inputs=(marked_batch,),
-            outputs=(output_1, output_2))
+            outputs=outputs)
     
 
     outputs_1 = []
     outputs_2 = []
     for t in range(video_batch.shape[1]):
         frame = video_batch[:, t:t + 1]
-        tmp1, tmp2 = online_forward([frame], initial_states)
-        outputs_1.append(tmp1)
-        outputs_2.append(tmp2)
+        outputs_frame, states = online_forward([frame], states)
+        outputs_1.append(outputs_frame[0])
+        outputs_2.append(outputs_frame[1])
 
     outputs_new_1 = torch.cat(outputs_1, dim=1)
     outputs_new_2 = torch.cat(outputs_2, dim=1)
+    import IPython;IPython.embed()
 
 # test_correctness()
 test_onlinefy()
