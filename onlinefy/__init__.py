@@ -1,1 +1,1 @@
-from .online import OnlineComprehension
+from .online import TemporalComprehension

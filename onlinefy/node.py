@@ -1,10 +1,13 @@
 
+def get_tensor_id(tensor):
+    return (id(tensor), tensor._version)
+
 class FuncNode(object):
     def __init__(self, func, state, inputs, output, name="default"):
         self.func = func
         self.state = state
-        self.inputs = [id(tensor) for tensor in inputs]
-        self.output = id(output)
+        self.inputs = [get_tensor_id(tensor) for tensor in inputs]
+        self.output = get_tensor_id(output)
         self.state_id = id(state) if state else 0
         self.name = name
 

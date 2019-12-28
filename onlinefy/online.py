@@ -1,7 +1,7 @@
 
 from .inject import inject_torch, uninject_torch
 
-class OnlineComprehension(object):
+class TemporalComprehension(object):
     def __init__(self, debug=False):
         self.session = {}
         self.session['debug'] = debug
