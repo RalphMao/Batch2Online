@@ -60,7 +60,7 @@ def test_correctness():
 
 
 def test_onlinefy():
-    video_batch = torch.ones(2,10,3,50,50, requires_grad=True)
+    video_batch = torch.randn(2,10,3,50,50)
     marked_batch = MarkedTensor(video_batch, marked_dim=1)
     tmodel = TemporalModel()
 
@@ -90,7 +90,7 @@ def test_onlinefy():
         outputs_2.append(outputs_frame[0])
 
     outputs_new_2 = torch.cat(outputs_2, dim=1)
-    print(torch.std(outputs_new_2 - outputs[:10]))
+    print(torch.std(outputs_new_2 - outputs[:, :10]))
 
 # test_correctness()
 test_onlinefy()

@@ -9,7 +9,7 @@ class FuncNode(object):
         self.state = state
         self.inputs = [get_tensor_id(tensor) for tensor in inputs]
         self.output = get_tensor_id(output)
-        self.state_id = id(state) if state else 0
+        self.state_id = id(state) if state is not None else 0
         self.name = name
 
     def execute(self, exec_vars, states, new_states):

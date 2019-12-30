@@ -182,17 +182,21 @@ class GetItemRule(BaseRule):
                 dim_count += 1
             if type(element) is int:
                 dim_subtract += 1
-        return element, idx - dim_subtract
+        return element, idx - dim_subtract, idx
 
     def onlinefy(self, marked_tensors, func_args, results):
         index = self._input_analyze(func_args)
         tstruct_new = marked_tensors[0].tstruct.copy()
 
-        temporal_slice, new_marked_dim = self._locate_dim(index, tstruct_new.marked_dim)
+        temporal_slice, new_marked_dim, temporal_index = self._locate_dim(index, tstruct_new.marked_dim)
         tstruct_new.marked_dim = new_marked_dim
 
         self._check_temporal_slice(temporal_slice)
         if self._trivial_slice(temporal_slice):
+            if temporal_slice.stop is not None and temporal_slice.stop:
+                index = list(index)
+                index[temporal_index] = slice(temporal_slice.start, None, temporal_slice.step)
+                func_args['index'] = tuple(index)
             return (make_identical_func(self.func, self.signature, func_args),
                     None,
                     tstruct_new)
@@ -271,8 +275,21 @@ class PadRule(BaseRule):
             pad_by_dim = tuple((pad[2*n:2*n+2] for n in range(func_args['input'].ndim)))
         elif func_args['mode'] == 'replicate':
             pad = pad[::-1]
-            pad_by_dim = ((0, 0),) * 2 + tuple((pad[2*n:2*n+2] for n in range(func_args['input'].ndim - 2)))
+            pad_by_dim = ((0, 0),) * 2 + tuple((pad[2*n:2*n+2][::-1] for n in range(func_args['input'].ndim - 2)))
+        else:
+            raise NotImplementedError
         return pad_by_dim
+
+    def _get_pad_arg(self, func_args, pad_by_dim):
+        func_args = copy.copy(func_args)
+        if func_args['mode'] == 'constant':
+            pad = sum(pad_by_dim, tuple())
+        elif func_args['mode'] == 'replicate':
+            pad = sum(pad_by_dim[2::-1], tuple())
+        else:
+            raise NotImplementedError
+        func_args['pad'] = pad
+        return func_args
 
     def onlinefy(self, marked_tensors, func_args, results):
         pad_by_dim = self._input_analyze(func_args)
@@ -282,18 +299,20 @@ class PadRule(BaseRule):
 
         pad_size = pad_by_dim[marked_dim][0]
         if pad_size == 0:
+            if pad_by_dim[marked_dim] != (0, 0):
+                pad_by_dim[marked_dim] = (0, 0)
+                func_args = self._get_pad_arg(func_args, pad_by_dim)
             return (make_identical_func(self.func, self.signature, func_args),
                     None,
                     tstruct_new)
         else:
             mode = func_args['mode']
             def online_pad(input_tensors, state):
-                if len(initial_state) == 0 and mode == 'replicate':
+                if len(state) == 0 and mode == 'replicate':
                     state.extend([input_tensors[0]] * pad_size)
-
                 state.append(input_tensors[0])
-                return state[0]
-            initial_state = deque(pad_size + 1)
+                return state[0], state
+            initial_state = deque(maxlen=pad_size + 1)
             if mode == 'constant':
                 pad_shape = list(marked_tensor.shape)
                 pad_shape[marked_dim] = 1
