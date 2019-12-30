@@ -1,145 +1,328 @@
 - abstract: false
   arguments:
-  - {annotation: null, dynamic_type: Tensor, is_nullable: false, name: self, type: const
-      Tensor &}
+  - annotation: null
+    dynamic_type: Tensor
+    is_nullable: false
+    name: self
+    type: const Tensor &
   deprecated: false
   device_guard: true
   inplace: false
   is_factory_method: null
   matches_jit_signature: true
-  method_of: [Type, Tensor]
+  method_of:
+  - Type
+  - Tensor
   method_prefix_derived: ''
   mode: native
   name: contiguous
   python_module: ''
   requires_tensor: false
   returns:
-  - {dynamic_type: Tensor, name: result, type: Tensor}
+  - dynamic_type: Tensor
+    name: result
+    type: Tensor
   schema_string: aten::contiguous(Tensor self, *, MemoryFormat memory_format=contiguous_format)
     -> Tensor
   with_gil: false
-- abstract: true
+- &id001
+  abstract: true
   arguments:
-  - {annotation: null, dynamic_type: Tensor, is_nullable: false, name: self, type: const
-      Tensor &}
+  - annotation: null
+    dynamic_type: Tensor
+    is_nullable: false
+    name: self
+    type: const Tensor &
+  - annotation: null
+    dynamic_type: Tensor
+    is_nullable: false
+    name: other
+    type: const Tensor &
+  - annotation: null
+    default: 1
+    dynamic_type: Scalar
+    is_nullable: false
+    kwarg_only: true
+    name: alpha
+    type: Scalar
   deprecated: false
   device_guard: true
   inplace: false
   is_factory_method: null
   matches_jit_signature: true
-  method_of: [Type, Tensor, namespace]
+  method_of:
+  - Type
+  - Tensor
+  - namespace
   method_prefix_derived: ''
   mode: native
-  name: relu
+  name: add
   python_module: ''
   requires_tensor: false
   returns:
-  - {dynamic_type: Tensor, name: result, type: Tensor}
-  schema_string: aten::relu(Tensor self) -> Tensor
+  - dynamic_type: Tensor
+    name: result
+    type: Tensor
+  schema_string: aten::add(Tensor self, Tensor other, *, Scalar alpha=1) -> Tensor
   with_gil: false
 - abstract: true
   arguments:
-  - {annotation: a, dynamic_type: Tensor, is_nullable: false, name: self, type: const
-      Tensor &}
-  - {annotation: null, dynamic_type: IntArrayRef, is_nullable: false, name: size,
-    type: IntArrayRef}
+  - annotation: a
+    dynamic_type: Tensor
+    is_nullable: false
+    name: self
+    type: const Tensor &
+  - annotation: null
+    dynamic_type: IntArrayRef
+    is_nullable: false
+    name: size
+    type: IntArrayRef
   deprecated: false
   device_guard: false
   inplace: false
   is_factory_method: null
   matches_jit_signature: true
-  method_of: [Type, Tensor]
+  method_of:
+  - Type
+  - Tensor
   method_prefix_derived: ''
   mode: native
   name: view
   python_module: ''
   requires_tensor: false
   returns:
-  - {dynamic_type: Tensor, name: result, type: Tensor}
+  - dynamic_type: Tensor
+    name: result
+    type: Tensor
   schema_string: aten::view(Tensor(a) self, int[] size) -> Tensor(a)
   with_gil: false
-- abstract: false
+- *id001
+- &id002
+  abstract: false
   arguments:
-  - {annotation: null, dynamic_type: Tensor, is_nullable: false, name: input, type: const
-      Tensor &}
-  - {annotation: null, dynamic_type: Tensor, is_nullable: false, name: weight, type: const
-      Tensor &}
-  - {annotation: null, default: '{}', dynamic_type: Tensor, is_nullable: true, name: bias,
-    type: const Tensor &}
-  - {annotation: null, default: 1, dynamic_type: IntArrayRef, is_nullable: false,
-    name: stride, size: 2, type: IntArrayRef}
-  - {annotation: null, default: 0, dynamic_type: IntArrayRef, is_nullable: false,
-    name: padding, size: 2, type: IntArrayRef}
-  - {annotation: null, default: 1, dynamic_type: IntArrayRef, is_nullable: false,
-    name: dilation, size: 2, type: IntArrayRef}
-  - {annotation: null, default: 1, dynamic_type: int64_t, is_nullable: false, name: groups,
-    type: int64_t}
+  - annotation: null
+    dynamic_type: Tensor
+    is_nullable: false
+    name: self
+    type: const Tensor &
+  - annotation: null
+    dynamic_type: Tensor
+    is_nullable: false
+    name: other
+    type: const Tensor &
+  - annotation: null
+    default: 1
+    dynamic_type: Scalar
+    is_nullable: false
+    kwarg_only: true
+    name: alpha
+    type: Scalar
   deprecated: false
   device_guard: true
   inplace: false
   is_factory_method: null
   matches_jit_signature: true
-  method_of: [Type, namespace]
+  method_of:
+  - Type
+  - Tensor
+  - namespace
+  method_prefix_derived: ''
+  mode: native
+  name: sub
+  python_module: ''
+  requires_tensor: false
+  returns:
+  - dynamic_type: Tensor
+    name: result
+    type: Tensor
+  schema_string: aten::sub(Tensor self, Tensor other, *, Scalar alpha=1) -> Tensor
+  with_gil: false
+- abstract: true
+  arguments:
+  - annotation: null
+    dynamic_type: Tensor
+    is_nullable: false
+    name: self
+    type: const Tensor &
+  deprecated: false
+  device_guard: true
+  inplace: false
+  is_factory_method: null
+  matches_jit_signature: true
+  method_of:
+  - Type
+  - Tensor
+  - namespace
+  method_prefix_derived: ''
+  mode: native
+  name: relu
+  python_module: ''
+  requires_tensor: false
+  returns:
+  - dynamic_type: Tensor
+    name: result
+    type: Tensor
+  schema_string: aten::relu(Tensor self) -> Tensor
+  with_gil: false
+- abstract: false
+  arguments:
+  - annotation: null
+    dynamic_type: Tensor
+    is_nullable: false
+    name: input
+    type: const Tensor &
+  - annotation: null
+    dynamic_type: Tensor
+    is_nullable: false
+    name: weight
+    type: const Tensor &
+  - annotation: null
+    default: '{}'
+    dynamic_type: Tensor
+    is_nullable: true
+    name: bias
+    type: const Tensor &
+  - annotation: null
+    default: 1
+    dynamic_type: IntArrayRef
+    is_nullable: false
+    name: stride
+    size: 2
+    type: IntArrayRef
+  - annotation: null
+    default: 0
+    dynamic_type: IntArrayRef
+    is_nullable: false
+    name: padding
+    size: 2
+    type: IntArrayRef
+  - annotation: null
+    default: 1
+    dynamic_type: IntArrayRef
+    is_nullable: false
+    name: dilation
+    size: 2
+    type: IntArrayRef
+  - annotation: null
+    default: 1
+    dynamic_type: int64_t
+    is_nullable: false
+    name: groups
+    type: int64_t
+  deprecated: false
+  device_guard: true
+  inplace: false
+  is_factory_method: null
+  matches_jit_signature: true
+  method_of:
+  - Type
+  - namespace
   method_prefix_derived: ''
   mode: native
   name: conv2d
   python_module: ''
   requires_tensor: false
   returns:
-  - {dynamic_type: Tensor, name: result, type: Tensor}
+  - dynamic_type: Tensor
+    name: result
+    type: Tensor
   schema_string: aten::conv2d(Tensor input, Tensor weight, Tensor? bias=None, int[2]
     stride=1, int[2] padding=0, int[2] dilation=1, int groups=1) -> Tensor
   with_gil: false
 - abstract: false
   arguments:
-  - {annotation: null, dynamic_type: Tensor, is_nullable: false, name: input, type: const
-      Tensor &}
-  - {annotation: null, dynamic_type: Tensor, is_nullable: false, name: weight, type: const
-      Tensor &}
-  - {annotation: null, default: '{}', dynamic_type: Tensor, is_nullable: true, name: bias,
-    type: const Tensor &}
-  - {annotation: null, default: 1, dynamic_type: IntArrayRef, is_nullable: false,
-    name: stride, size: 3, type: IntArrayRef}
-  - {annotation: null, default: 0, dynamic_type: IntArrayRef, is_nullable: false,
-    name: padding, size: 3, type: IntArrayRef}
-  - {annotation: null, default: 1, dynamic_type: IntArrayRef, is_nullable: false,
-    name: dilation, size: 3, type: IntArrayRef}
-  - {annotation: null, default: 1, dynamic_type: int64_t, is_nullable: false, name: groups,
-    type: int64_t}
+  - annotation: null
+    dynamic_type: Tensor
+    is_nullable: false
+    name: input
+    type: const Tensor &
+  - annotation: null
+    dynamic_type: Tensor
+    is_nullable: false
+    name: weight
+    type: const Tensor &
+  - annotation: null
+    default: '{}'
+    dynamic_type: Tensor
+    is_nullable: true
+    name: bias
+    type: const Tensor &
+  - annotation: null
+    default: 1
+    dynamic_type: IntArrayRef
+    is_nullable: false
+    name: stride
+    size: 3
+    type: IntArrayRef
+  - annotation: null
+    default: 0
+    dynamic_type: IntArrayRef
+    is_nullable: false
+    name: padding
+    size: 3
+    type: IntArrayRef
+  - annotation: null
+    default: 1
+    dynamic_type: IntArrayRef
+    is_nullable: false
+    name: dilation
+    size: 3
+    type: IntArrayRef
+  - annotation: null
+    default: 1
+    dynamic_type: int64_t
+    is_nullable: false
+    name: groups
+    type: int64_t
   deprecated: false
   device_guard: true
   inplace: false
   is_factory_method: null
   matches_jit_signature: true
-  method_of: [Type, namespace]
+  method_of:
+  - Type
+  - namespace
   method_prefix_derived: ''
   mode: native
   name: conv3d
   python_module: ''
   requires_tensor: false
   returns:
-  - {dynamic_type: Tensor, name: result, type: Tensor}
+  - dynamic_type: Tensor
+    name: result
+    type: Tensor
   schema_string: aten::conv3d(Tensor input, Tensor weight, Tensor? bias=None, int[3]
     stride=1, int[3] padding=0, int[3] dilation=1, int groups=1) -> Tensor
   with_gil: false
 - abstract: false
   arguments:
-  - {annotation: a, dynamic_type: Tensor, is_nullable: false, name: self, type: const
-      Tensor &}
-  - {annotation: null, dynamic_type: IntArrayRef, is_nullable: false, name: dims,
-    type: IntArrayRef}
+  - annotation: a
+    dynamic_type: Tensor
+    is_nullable: false
+    name: self
+    type: const Tensor &
+  - annotation: null
+    dynamic_type: IntArrayRef
+    is_nullable: false
+    name: dims
+    type: IntArrayRef
   deprecated: false
   device_guard: true
   inplace: false
   is_factory_method: null
   matches_jit_signature: true
-  method_of: [Type, Tensor]
+  method_of:
+  - Type
+  - Tensor
   method_prefix_derived: ''
   mode: native
   name: permute
   python_module: ''
   requires_tensor: false
   returns:
-  - {dynamic_type: Tensor, name: result, type: Tensor}
+  - dynamic_type: Tensor
+    name: result
+    type: Tensor
   schema_string: aten::permute(Tensor(a) self, int[] dims) -> Tensor(a)
   with_gil: false
+- *id002

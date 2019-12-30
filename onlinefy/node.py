@@ -1,5 +1,6 @@
 
 def get_tensor_id(tensor):
+    # return id(tensor)
     return (id(tensor), tensor._version)
 
 class FuncNode(object):

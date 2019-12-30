@@ -45,11 +45,15 @@ Argument_Mapping = {
     'std::array<bool,2>': unimplemented_func,
     'std::array<bool,3>': unimplemented_func,
 }
-FullSpecs = get_full_specs()
+FullSpecs = []
 
 def get_func_signature(funcname):
-    func_specs = [x for x in FullSpecs if x['name'] == funcname]
-    assert len(func_specs) > 0
+    if len(FullSpecs) == 0:
+        FullSpecs.append(get_full_specs())
+    fullspecs = FullSpecs[0]
+
+    func_specs = [x for x in fullspecs if x['name'] == funcname]
+    assert len(func_specs) > 0, "Cannot find spec of function %s" % funcname
     func_spec = func_specs[0]
     sig = OrderedDict()
     for argument in func_spec['arguments']:

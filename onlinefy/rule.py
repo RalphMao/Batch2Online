@@ -6,14 +6,14 @@ from .marked_tensor import MarkedTensor
 from .arg_parser import get_marked_tensors, construct_input
 from .torch_signature import get_func_signature
 
-def make_identical_func(func, func_args):
+def make_identical_func(func, sig, func_args):
     marked_tensors, marked_keys = get_marked_tensors(func_args)
     func_args = copy.copy(func_args)
     def identical_func(input_tensors, state):
         assert len(marked_tensors) == len(input_tensors), "Number of input tensors does not match"
         for key, input_tensor in zip(marked_keys, input_tensors):
             func_args[key] = input_tensor
-        args, kwargs = construct_input(func_args)
+        args, kwargs = construct_input(func_args, sig)
         
         return func(*args, **kwargs), None
     return identical_func
@@ -24,7 +24,7 @@ class BaseRule(object):
         self.signature = get_func_signature(func.__name__)
 
     def onlinefy(self, marked_tensors, func_args, results):
-        return (make_identical_func(self.func, func_args),
+        return (make_identical_func(self.func, self.signature, func_args),
                None, 
                marked_tensors[0].tstruct.copy())
 
@@ -115,7 +115,7 @@ class DimPermuteRule(BaseRule):
             return torch.tensor_original.permute(input_tensor, permute_order), None
         return online_permute, None, tstruct_new
 
-def GetItemRule(BaseRule):
+class GetItemRule(BaseRule):
     '''
     Support two temporal operations: offset and step
     '''
@@ -133,8 +133,10 @@ def GetItemRule(BaseRule):
             for element in index:
                 assert type(element) is int or type(element) is slice, \
                     "Does not support advanced indexing"
+            if len(index) < len(shape):
+                index += (slice(None), ) * (len(shape) - len(index))
         else:
-            raise NotImplemented
+            raise NotImplementedError
         return index
 
     @staticmethod
@@ -174,10 +176,10 @@ def GetItemRule(BaseRule):
         dim_count = 0
         dim_subtract = 0
         for idx, element in enumerate(index):
-            if element is not None:
-                dim_count += 1
             if dim_count == original_dim:
                 break
+            if element is not None:
+                dim_count += 1
             if type(element) is int:
                 dim_subtract += 1
         return element, idx - dim_subtract
@@ -191,11 +193,12 @@ def GetItemRule(BaseRule):
 
         self._check_temporal_slice(temporal_slice)
         if self._trivial_slice(temporal_slice):
-            return (make_identical_func(self.func, func_args),
+            return (make_identical_func(self.func, self.signature, func_args),
                     None,
                     tstruct_new)
 
         offset = temporal_slice.start
+        assert offset >= 0
         step = 1 if temporal_slice.step is None else temporal_slice.step
         def online_slice(input_tensors, state):
             state['counter'] += 1
@@ -247,10 +250,10 @@ class ElementwiseRule(BaseRule):
             tstruct2 = marked_tensors[1].tstruct
             assert marked_tensors[0].ndim - tstruct1.marked_dim == marked_tensors[1].ndim - tstruct2.marked_dim, "Temporal dimensions do not match"
         new_marked_dim = tstruct1.marked_dim + out_dims - marked_tensors[0].ndim
-        new_tstruct = tstruct1.copy()
-        new_tstruct.marked_dim = new_marked_dim
+        tstruct_new  = tstruct1.copy()
+        tstruct_new.marked_dim = new_marked_dim
 
-        return (make_identical_func(self.func, func_args),
+        return (make_identical_func(self.func, self.signature, func_args),
                 None,
                 tstruct_new)
 
@@ -263,10 +266,12 @@ class PadRule(BaseRule):
                                      value=(0, False, False))
 
     def _input_analyze(self, func_args):
+        pad = func_args['pad']
         if func_args['mode'] == 'constant':
-            pad_by_dim = (pad[2*n:2*n+2] for n in range(func_args['input'].ndim))
+            pad_by_dim = tuple((pad[2*n:2*n+2] for n in range(func_args['input'].ndim)))
         elif func_args['mode'] == 'replicate':
-            pad_by_dim = (0, ) * 4 + (pad[-2*n-2: -2*n] for n in range(func_args['input'].ndim - 2))
+            pad = pad[::-1]
+            pad_by_dim = ((0, 0),) * 2 + tuple((pad[2*n:2*n+2] for n in range(func_args['input'].ndim - 2)))
         return pad_by_dim
 
     def onlinefy(self, marked_tensors, func_args, results):
@@ -277,7 +282,7 @@ class PadRule(BaseRule):
 
         pad_size = pad_by_dim[marked_dim][0]
         if pad_size == 0:
-            return (make_identical_func(self.func, func_args),
+            return (make_identical_func(self.func, self.signature, func_args),
                     None,
                     tstruct_new)
         else:
@@ -309,6 +314,9 @@ funcrule_dict = {
     '_VariableFunctions.add': ElementwiseRule,
     '_TensorBase.add': ElementwiseRule,
     '_TensorBase.__add__': ElementwiseRule,
+    '_VariableFunctions.sub': ElementwiseRule,
+    '_TensorBase.sub': ElementwiseRule,
+    '_TensorBase.__sub__': ElementwiseRule,
     'pad': PadRule,
     '_TensorBase.__getitem__': GetItemRule,
     '_TensorBase.view': ReshapeRule,

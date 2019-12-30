@@ -1,9 +1,13 @@
 
 from .inject import inject_torch, uninject_torch
+from .node import get_tensor_id
 
 class TemporalComprehension(object):
     def __init__(self, debug=False):
-        self.session = {}
+        self.session = {
+            'debug': False,
+            'graph': [],
+            }
         self.session['debug'] = debug
 
     def __enter__(self):
@@ -18,8 +22,8 @@ class TemporalComprehension(object):
         self.session['graph'] = []
 
     def get_online_func(self, inputs, outputs):
-        output_ids = [id(output) for output in outputs]
-        input_ids = [id(input) for input in inputs]
+        output_ids = [get_tensor_id(output) for output in outputs]
+        input_ids = [get_tensor_id(input) for input in inputs]
         output2node_mapping = dict([(funcnode.output, funcnode) for funcnode in self.session['graph']])
         nodelist = []
         running_output_ids = [id_ for id_ in output_ids]
@@ -32,7 +36,7 @@ class TemporalComprehension(object):
                 running_output_ids = list(set(running_output_ids))
                 
             else:
-                print("Warning")
+                print("Warning - cannot link output of func %s"%node.func.__qualname__)
         assert len(running_output_ids) == 0, "Cannot resolve all outputs"
         online_func = self.get_func_from_nodes(nodelist, input_ids, output_ids)
         states = self.get_states_from_nodes(nodelist)

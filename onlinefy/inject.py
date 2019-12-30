@@ -51,19 +51,33 @@ def marked_func_wrapper(func, session):
         return results
     return marked_func
 
+def check_func(func):
+    if type(func) is types.BuiltinFunctionType:
+        return True
+    if type(func) is types.FunctionType:
+        return True
+    MethodDescriptorType = type(str.format)
+    if type(func) is MethodDescriptorType:
+        return True
+    SlotWrapperType = type(str.__add__)
+    if type(func) is SlotWrapperType:
+        return True
+    return False
+
+    
 def inject_torch(session):
     torch.original = EasyDict()
     torch.tensor_original = EasyDict()
     torch.nnfunc_original = EasyDict()
     for name, val in torch.__dict__.items():
-        if type(val) is types.BuiltinFunctionType:
+        if check_func(val):
             torch.original[name] = val
             if val.__qualname__ in funcrule_dict:
                 setattr(torch, name, marked_func_wrapper(val, session))
                 if session['debug']:
                     print("Inject torch.{name}".format(name=val.__qualname__))
     for name, val in torch.nn.functional.__dict__.items():
-        if type(val) is types.BuiltinFunctionType:
+        if check_func(val):
             torch.nnfunc_original[name] = val
             if val.__qualname__ in funcrule_dict:
                 setattr(torch.nn.functional, name, marked_func_wrapper(val, session))
@@ -71,7 +85,7 @@ def inject_torch(session):
                     print("Inject torch.nn.functional.{name}".format(name=val.__qualname__))
     for name in dir(torch.Tensor):
         val = getattr(torch.Tensor, name)
-        if type(val) is type(torch.Tensor.new):
+        if check_func(val):
             torch.tensor_original[name] = val
             if val.__qualname__ in funcrule_dict:
                 setattr(torch.Tensor, name, marked_func_wrapper(val, session))

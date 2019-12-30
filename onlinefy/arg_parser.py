@@ -43,14 +43,20 @@ def parse_func_args(args, kwargs, sig):
         else:
             func_args[key] = arg
             sig_idx += 1
-    for key, val in kwargs:
+    for key, val in kwargs.items():
         func_args[key] = val
     
     return func_args
 
-def construct_input(func_args):
-    args = func_args.values()
+def construct_input(func_args, sig):
+    args = []
     kwargs = {}
+    for key in sig:
+        assert key in func_args, "Cannot find key %s" % key
+        if sig[key][1]:
+            args.append(func_args[key])
+        else:
+            kwargs[key] = func_args[key]
     return args, kwargs
 
 def get_marked_tensors(func_args):

@@ -6,9 +6,9 @@ from onlinefy.marked_tensor import MarkedTensor
 class TemporalModel(torch.nn.Module):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.conv1 = nn.Conv2d(3, 16, kernel_size=(3, 3), padding=(1, 1), bias=False)
-        self.conv2_1 = nn.Conv2d(16, 8, kernel_size=(3, 3), padding=(1, 1), bias=False)
-        self.conv2_2 = nn.Conv2d(16, 8, kernel_size=(1, 1), padding=(0, 0), bias=False)
+        self.conv1 = nn.Conv2d(3, 8, kernel_size=(3, 3), padding=(1, 1), bias=False)
+        self.conv2_1 = nn.Conv2d(8, 8, kernel_size=(3, 3), padding=(1, 1), bias=False)
+        self.conv2_2 = nn.Conv2d(8, 8, kernel_size=(1, 1), padding=(0, 0), bias=False)
         self.conv3 = nn.Conv2d(8, 16, kernel_size=(3, 3), padding=(1, 1), bias=False)
 
     @staticmethod
@@ -33,12 +33,16 @@ class TemporalModel(torch.nn.Module):
         feat1 = self.conv2d(video_in, self.conv1)
         feat1 = torch.relu(feat1)
 
-        feat1_diff = feat1 - self.pad3d(feat1, (0,0,0,0,1,0))[:,:-1]
+        feat1_padded = self.pad3d(feat1, (0,0,0,0,1,0))
+        feat1_offset = feat1_padded[:,:-1]
+        feat2 = feat1 - feat1_offset
 
         # method 1
+        '''
         feat_sub1 = feat1[:, ::5]
         feat2 = self.conv2d(feat1_diff, self.conv2_1)
         feat2[:, ::5] = self.conv2d(feat_sub1, self.conv2_2)
+        '''
 
         output_2 = self.conv2d(feat2, self.conv3)
 
@@ -76,21 +80,17 @@ def test_onlinefy():
         outputs = tmodel(marked_batch)
         online_forward, states = tm.get_online_func(
             inputs=(marked_batch,),
-            outputs=outputs)
+            outputs=(outputs, ))
     
 
-    outputs_1 = []
     outputs_2 = []
     for t in range(video_batch.shape[1]):
         frame = video_batch[:, t:t + 1]
         outputs_frame, states = online_forward([frame], states)
-        outputs_1.append(outputs_frame[0])
-        outputs_2.append(outputs_frame[1])
+        outputs_2.append(outputs_frame[0])
 
-    outputs_new_1 = torch.cat(outputs_1, dim=1)
     outputs_new_2 = torch.cat(outputs_2, dim=1)
-    print(torch.std(outputs_new_1 - outputs[0][:10]))
-    print(torch.std(outputs_new_2 - outputs[1][:10]))
+    print(torch.std(outputs_new_2 - outputs[:10]))
 
-test_correctness()
-# test_onlinefy()
+# test_correctness()
+test_onlinefy()
