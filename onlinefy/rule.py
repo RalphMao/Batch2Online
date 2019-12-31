@@ -53,7 +53,7 @@ class ConvRule(BaseRule):
             padding = list(func_args['padding'])
             def online_conv(input_tensors, state):
                 input_tensor = input_tensors[0]
-                inputs = torch.original.cat(state + (input_tensor, ), dim=target_dim)
+                inputs = torch.cat(state + (input_tensor, ), dim=target_dim)
                 padding[tdim] = 0
                 func_args['padding'] = padding
                 func_args['input']  = inputs
@@ -63,7 +63,7 @@ class ConvRule(BaseRule):
 
             initial_state_shape = list(marked_tensor.shape)
             initial_state_shape[target_dim] = 1
-            initial_state = (torch.zeros(initial_state_shape), ) * padding[tdim]
+            initial_state = (torch.zeros(initial_state_shape, dtype=marked_tensor.dtype, device=marked_tensor.device), ) * padding[tdim]
 
             t_struct_new = marked_tensor.tstruct.copy()
             t_struct_new.offset += padding[tdim] + 1 - kernel_size 
@@ -93,7 +93,8 @@ class ReshapeRule(BaseRule):
             assert new_shape[tstruct_new.marked_dim] % tdim == 0
             new_shape[tstruct_new.marked_dim] = new_shape[tstruct_new.marked_dim] // tdim
             new_shape = tuple(new_shape)
-            output_tensor = torch.tensor_original.view(input_tensor, new_shape)
+            # output_tensor = torch.tensor_original.view(input_tensor, new_shape)
+            output_tensor = input_tensor.view(new_shape)
             return output_tensor, None
         return online_reshape, None, tstruct_new
 
@@ -112,7 +113,8 @@ class DimPermuteRule(BaseRule):
 
         def online_permute(input_tensors, state):
             input_tensor = input_tensors[0]
-            return torch.tensor_original.permute(input_tensor, permute_order), None
+            # return torch.tensor_original.permute(input_tensor, permute_order), None
+            return input_tensor.permute(permute_order), None
         return online_permute, None, tstruct_new
 
 class GetItemRule(BaseRule):

@@ -3,11 +3,13 @@ from .inject import inject_torch, uninject_torch
 from .node import get_tensor_id
 
 class TemporalComprehension(object):
+    session = {
+        'debug': False,
+        'graph': [],
+        'activated': False,
+        'nested': False
+        }
     def __init__(self, debug=False):
-        self.session = {
-            'debug': False,
-            'graph': [],
-            }
         self.session['debug'] = debug
 
     def __enter__(self):
@@ -17,9 +19,15 @@ class TemporalComprehension(object):
 
     def __exit__(self, exception_type, exception_value, traceback):
         uninject_torch()
+        self._clear_session()
 
     def _init_session(self):
+        assert not self.session['activated'], "Already under temporal comprehension"
+        self.session['activated'] = True
         self.session['graph'] = []
+
+    def _clear_session(self):
+        self.session['activated'] = False
 
     def get_online_func(self, inputs, outputs):
         output_ids = [get_tensor_id(output) for output in outputs]
@@ -42,9 +50,10 @@ class TemporalComprehension(object):
         states = self.get_states_from_nodes(nodelist)
         return online_func, states
 
-    @staticmethod
-    def get_func_from_nodes(nodelist, inputs, outputs):
+    def get_func_from_nodes(self, nodelist, inputs, outputs):
         def forward_func(input_tensors, states):
+            if self.session['activated']:
+                print("Warning - call online function inside TC environment")
             assert len(input_tensors) == len(inputs)
             exec_vars = dict(zip(inputs, input_tensors))
             new_states = {}

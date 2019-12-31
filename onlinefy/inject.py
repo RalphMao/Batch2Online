@@ -24,14 +24,20 @@ def print_parent_stack(name, stack_id):
 def marked_func_wrapper(func, session):
     funcrule = get_funcrule(func)
     def marked_func(*args, **kwargs):
+        if not session['activated'] or session['nested']:
+            return func(*args, **kwargs)
+
         func_args = parse_func_args(args, kwargs, funcrule.signature)
         marked_tensors, _ = get_marked_tensors(func_args)
 
-        if len(marked_tensors) > 0:
-
+        if len(marked_tensors) == 0:
+            results = func(*args, **kwargs)
+        else:
             results_unmarked = func(*args, **kwargs)
 
+            session['nested'] = True
             online_func, init_state, output_info = funcrule.onlinefy(marked_tensors, func_args, results_unmarked)
+            session['nested'] = False
 
             if isinstance(results_unmarked, torch.Tensor):
                 results = mark_tensor(results_unmarked, output_info)
@@ -45,8 +51,6 @@ def marked_func_wrapper(func, session):
             session['graph'].append(FuncNode(online_func, init_state, marked_tensors, output_tensor, func.__name__))
             if session['debug']:
                 print_parent_stack(func.__name__, -3)
-        else:
-            results = func(*args, **kwargs)
 
         return results
     return marked_func
