@@ -10,8 +10,9 @@ Input is represented with ordered dict
 '''
 
 from collections import OrderedDict
+import torch
 
-from .marked_tensor import MarkedTensor
+from .marked_tensor import MarkedTensor, mark_tensor
 
 def default_arg_from_sig(sig):
     func_args = OrderedDict()
@@ -67,3 +68,14 @@ def get_marked_tensors(func_args):
             keys.append(key)
             marked_tensors.append(val)
     return marked_tensors, keys
+
+def get_marked_output(results, output_info):
+    if isinstance(results, torch.Tensor):
+        results = mark_tensor(results, output_info)
+        output_tensor = results
+    elif type(results) is tuple and isinstance(results[0], torch.Tensor):
+        results = (mark_tensor(results[0], output_info), ) + results[1:]
+        output_tensor = results[0]
+    else:
+        raise NotImplementedError
+    return results, output_tensor

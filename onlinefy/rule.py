@@ -13,7 +13,10 @@ def make_identical_func(func, sig, func_args):
         assert len(marked_tensors) == len(input_tensors), "Number of input tensors does not match"
         for key, input_tensor in zip(marked_keys, input_tensors):
             func_args[key] = input_tensor
-        args, kwargs = construct_input(func_args, sig)
+        if sig is None:
+            kwargs = func_args
+        else:
+            args, kwargs = construct_input(func_args, sig)
         
         return func(*args, **kwargs), None
     return identical_func
